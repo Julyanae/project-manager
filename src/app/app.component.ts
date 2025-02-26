@@ -1,13 +1,16 @@
+
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import {ProjectListComponent} from './project-list/project-list.component';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrls: ['./app.component.css'],
+  imports: [
+    ProjectListComponent
+  ],
+  standalone: true
 })
 export class AppComponent {
-  title = 'frontend3';
+  title = 'frontend2';
 }

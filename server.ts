@@ -1,53 +1,49 @@
-import { APP_BASE_HREF } from '@angular/common';
-import { CommonEngine } from '@angular/ssr';
-import express from 'express';
-import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
-import bootstrap from './src/main.server';
+/******************************************************************
+ * SERVER.TS
+ ******************************************************************/
 
-// The Express app is exported so that it can be used by serverless Functions.
+// Importations nécessaires pour le SSR
+import 'zone.js/node';
+import { APP_BASE_HREF } from '@angular/common';
+import express from 'express';
+import { join } from 'path';
+
+// Importez l’express engine fournie par Angular Universal
+//import { ngExpressEngine } from '@nguniversal/express-engine';
+// Importez votre module de serveur (à générer via Angular Universal)
+//import { AppServerModule } from './src/app/app.server.module';
+
 export function app(): express.Express {
   const server = express();
-  const serverDistFolder = dirname(fileURLToPath(import.meta.url));
-  const browserDistFolder = resolve(serverDistFolder, '../browser');
-  const indexHtml = join(serverDistFolder, 'index.server.html');
+  // Chemin vers le dossier contenant les fichiers générés (browser)
+  const distFolder = join(process.cwd(), 'dist/your-project/browser'); // Remplacez "your-project" par le nom de votre projet
+  const indexHtml = 'index.html';
 
-  const commonEngine = new CommonEngine();
-
+  // Configurez l’express engine pour le rendu Angular
+  server.engine('html', ngExpressEngine({
+    bootstrap: AppServerModule,
+  }));
   server.set('view engine', 'html');
-  server.set('views', browserDistFolder);
+  server.set('views', distFolder);
 
-  // Example Express Rest API endpoints
-  // server.get('/api/**', (req, res) => { });
-  // Serve static files from /browser
-  server.get('**', express.static(browserDistFolder, {
-    maxAge: '1y',
-    index: 'index.html',
+  // Servir les fichiers statiques (images, CSS, JS…)
+  server.get('*.*', express.static(distFolder, {
+    maxAge: '1y'
   }));
 
-  // All regular routes use the Angular engine
-  server.get('**', (req, res, next) => {
-    const { protocol, originalUrl, baseUrl, headers } = req;
-
-    commonEngine
-      .render({
-        bootstrap,
-        documentFilePath: indexHtml,
-        url: `${protocol}://${headers.host}${originalUrl}`,
-        publicPath: browserDistFolder,
-        providers: [{ provide: APP_BASE_HREF, useValue: baseUrl }],
-      })
-      .then((html) => res.send(html))
-      .catch((err) => next(err));
+  // Toutes les autres routes utilisent Angular pour le rendu
+  server.get('*', (req, res) => {
+    res.render(indexHtml, {
+      req,
+      providers: [{ provide: APP_BASE_HREF, useValue: req.baseUrl }]
+    });
   });
 
   return server;
 }
 
 function run(): void {
-  const port = process.env['PORT'] || 4000;
-
-  // Start up the Node server
+  const port = process.env.PORT || 4000;
   const server = app();
   server.listen(port, () => {
     console.log(`Node Express server listening on http://localhost:${port}`);
